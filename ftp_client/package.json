@@ -1,0 +1,16 @@
+{
+  "name": "ftp_client",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "vasa",
+  "license": "ISC",
+  "dependencies": {
+    "fs": "0.0.1-security",
+    "ftp": "^0.3.10",
+    "ftps": "^1.1.1"
+  }
+}

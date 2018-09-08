@@ -1,0 +1,108 @@
+version: 2
+
+create-cache-file: &create-cache-file
+  run:
+    name: Setup cache
+    command: echo "$NODE_VERSION" > _cache_node_version
+
+package-json-cache: &package-json-cache
+  key: npm-install-{{ checksum "_cache_node_version" }}-{{ checksum "package-lock.json" }}
+
+base-build: &base-build
+  steps:
+    - checkout
+    - <<: *create-cache-file
+    - restore_cache:
+        <<: *package-json-cache
+    - run:
+        name: Install
+        command: npm install
+    - save_cache:
+        <<: *package-json-cache
+        paths:
+          - node_modules
+    - run:
+        name: Lint
+        command: npm run verify:js
+    - run:
+        name: Test
+        command: npm run test:once
+
+jobs:
+  test_node_10:
+    docker:
+      - image: circleci/node:10
+    environment:
+      - NODE_VERSION: 10
+    <<: *base-build
+
+  test_node_8:
+    docker:
+      - image: circleci/node:8
+    environment:
+      - NODE_VERSION: 8
+    <<: *base-build
+
+  test_node_6:
+    docker:
+      - image: circleci/node:6
+    environment:
+      - NODE_VERSION: 6
+    <<: *base-build
+
+  release:
+    docker:
+      - image: circleci/node:8
+    environment:
+      - NODE_VERSION: 8
+    steps:
+      - checkout
+      - <<: *create-cache-file
+      - restore_cache:
+          <<: *package-json-cache
+      - run:
+          name: Update NPM
+          command: |
+            npm install npm@5
+            npm install semantic-release@11
+      - deploy:
+          name: Semantic Release
+          command: |
+            npm run semantic-release || true
+
+workflows:
+  version: 2
+  test_and_tag:
+    jobs:
+      - test_node_10:
+          filters:
+            branches:
+              only: master
+      - test_node_8:
+          filters:
+            branches:
+              only: master
+      - test_node_6:
+          filters:
+            branches:
+              only: master
+      - release:
+          requires:
+            - test_node_6
+            - test_node_8
+            - test_node_10
+
+  build_and_test:
+    jobs:
+      - test_node_10:
+          filters:
+            branches:
+              ignore: master
+      - test_node_8:
+          filters:
+            branches:
+              ignore: master
+      - test_node_6:
+          filters:
+            branches:
+              ignore: master
